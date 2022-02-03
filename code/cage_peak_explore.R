@@ -15,7 +15,7 @@ save(cell_cor_mat,file = './data/CAGE_cormat.Rda')
 
 base::load('./data/CAGE_cormat.Rda')
 d<-as.dist(1-cell_cor_mat)
-o<-seriate(d,method="TSP")
+o<-seriate(d,method="HC")
 image(cell_cor_mat[get_order(o),get_order(o)],col=viridis(100))
 
 cell_cor_mat[cell_cor_mat<median(as.numeric(cell_cor_mat))]<-0
@@ -38,7 +38,13 @@ tmp_mat<-matrix(0,nrow = nrow(cell_cor_mat),ncol=ncol(cell_cor_mat),dimnames = d
 tmp_mat[as.matrix(comm_edge_tbl[,1:2])]<-comm_edge_tbl$x
 image(tmp_mat[get_order(o),get_order(o)],col=plasma(4))
 
+sample_cl_tbl<-do.call(bind_rows,lapply(sample_comm,function(i){
+  tmp_v<-V(main_sub_g)$name[which(cluster_louvain(main_sub_g)$membership==i)]
+  return(tibble(sample.ID=tmp_v,cl=i))
+}))
 
+sample_cl_tbl<-tibble(sample.ID=V(g_cell)$name) %>% 
+  left_join(.,sample_cl_tbl)
 #Pivot to more efficient long-format
 long_transform_tbl<-do.call(bind_rows,lapply(2:ncol(cage_tbl),function(i){
   
@@ -54,7 +60,44 @@ long_transform_tbl<-do.call(bind_rows,lapply(2:ncol(cage_tbl),function(i){
 save(long_transform_tbl,file = './data/long_form_cage_tbl.Rda')
 base::load('./data/long_form_cage_tbl.Rda')
 
+long_transform_tbl<-long_transform_tbl %>% 
+  left_join(.,sample_cl_tbl)
 
+long_transform_tbl %>% 
+  dplyr::rename(peak.ID=`00Annotation`) %>% 
+  filter(!(is.na(cl))) %>% 
+  ggplot(.,aes(value,color=as.factor(cl)))+geom_density()+scale_x_log10()
+
+
+long_transform_tbl %>% 
+  dplyr::rename(peak.ID=`00Annotation`) %>% 
+  filter(!(is.na(cl))) %>% 
+  filter(peak.ID=="chr1:10003486..10003551,+") %>% 
+  ggplot(.,aes(value,color=as.factor(cl)))+geom_density()
+
+
+gg_peak_cl_med<-long_transform_tbl %>% 
+  dplyr::rename(peak.ID=`00Annotation`) %>% 
+  filter(!(is.na(cl))) %>% 
+  group_by(peak.ID,cl) %>% 
+  summarise(med=median(value),n=n()) %>%
+  filter(n>10) %>% 
+  ggplot(.,aes(med,peak.ID,color=as.factor(cl)))+geom_point()+scale_x_log10()+
+  theme(axis.ticks.y=element_blank())
+
+ggsave("./img/peak_cl_med.png",gg_peak_cl_med)
+
+long_transform_tbl %>% 
+  dplyr::rename(peak.ID=`00Annotation`) %>% 
+  filter(!(is.na(cl))) %>% 
+  group_by(peak.ID,cl) %>% 
+  summarise(med=median(value),n=n()) %>%
+  ungroup() %>% 
+  group_by(peak.ID) %>% 
+  summarise(sd=abs(diff(range(med))),m=mean(med),n=n()) %>%
+  filter(n>1) %>% 
+  mutate(cv=sd/m) %>% 
+  ggplot(.,aes(cv,m))+geom_point()+scale_x_log10()+scale_y_log10()
 
 sample_summary_tbl<-long_transform_tbl %>% 
   dplyr::rename(peak.ID=`00Annotation`) %>% 
@@ -63,23 +106,18 @@ sample_summary_tbl<-long_transform_tbl %>%
 
 
 peak_summary_tbl<-long_transform_tbl %>% 
-  dplyr::rename(peak.ID=`00Annotation`) %>% 
+  dplyr::rename(peak.ID=`00Annotation`) %>%
+  filter(!(is.na(cl))) %>% 
   group_by(peak.ID) %>% 
   summarise(n=n(),mad=mad(value),med=median(value),q25=quantile(value,0.25),q75=quantile(value,0.75))
 
+peak_summary_tbl %>% ggplot(.,aes(med,mad/med,color=n))+geom_point()+scale_x_log10()
 
-sample_summary_tbl %>% 
-  ggplot(.,aes(med,IQR))+
-  geom_point()+scale_x_log10()
+peak_summary_tbl %>% mutate(nc=ifelse(n>300,"ubiquitous",ifelse(n<10,"specialised","else"))) %>% 
+  ggplot(.,aes(med,mad/med,color=n))+geom_point(alpha=0.1)+scale_x_log10()+facet_grid(nc~.)
 
-sample_summary_tbl %>% 
-  ggplot(.,aes(n,IQR))+
-  geom_point()+scale_x_log10()
-
-sample_summary_tbl %>% 
-  ggplot(.,aes(n,CV2))+
-  geom_point(alpha=0.3)
-
+peak_summary_tbl %>% 
+  ggplot(.,aes(n))+geom_density()
 
 peak_summary_tbl %>% 
   arrange(desc(med)) %>% 
