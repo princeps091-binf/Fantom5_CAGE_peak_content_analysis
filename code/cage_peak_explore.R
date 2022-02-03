@@ -17,11 +17,19 @@ long_transform_tbl<-do.call(bind_rows,lapply(2:ncol(cage_tbl),function(i){
   
 }))
 
+save(long_transform_tbl,file = './data/long_form_cage_tbl.Rda')
+base::load('./data/long_form_cage_tbl.Rda')
 
 sample_summary_tbl<-long_transform_tbl %>% 
   dplyr::rename(peak.ID=`00Annotation`) %>% 
   group_by(sample.ID) %>% 
   summarise(n=n(),IQR=IQR(value),mad=mad(value),med=median(value),CV=sd(value)/mean(value),CV2=mad(value)/median(value))
+
+
+peak_summary_tbl<-long_transform_tbl %>% 
+  dplyr::rename(peak.ID=`00Annotation`) %>% 
+  group_by(peak.ID) %>% 
+  summarise(n=n(),mad=mad(value),med=median(value),q25=quantile(value,0.25),q75=quantile(value,0.75))
 
 
 sample_summary_tbl %>% 
@@ -35,6 +43,15 @@ sample_summary_tbl %>%
 sample_summary_tbl %>% 
   ggplot(.,aes(n,CV2))+
   geom_point(alpha=0.3)
+
+
+peak_summary_tbl %>% 
+  arrange(desc(med)) %>% 
+  mutate(rank=dense_rank(med)) %>% 
+  ggplot(.,aes(x=q25,xend=q75,y=rank,yend=rank))+
+  geom_segment(size=0.05)+
+  geom_point(aes(med,rank),color="red",size=0.1)+
+scale_x_log10()
 
 edge_tbl<-long_transform_tbl %>% 
   dplyr::rename(peak.ID=`00Annotation`) %>% 
