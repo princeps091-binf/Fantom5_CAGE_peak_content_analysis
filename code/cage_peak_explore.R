@@ -111,7 +111,7 @@ sample_summary_tbl<-long_transform_tbl %>%
 
 peak_summary_tbl<-long_transform_tbl %>% 
   dplyr::rename(peak.ID=`00Annotation`) %>%
-  filter(!(is.na(cl))) %>% 
+#  filter(!(is.na(cl))) %>% 
   group_by(peak.ID) %>% 
   summarise(n=n(),mad=mad(value),med=median(value),q25=quantile(value,0.25),q75=quantile(value,0.75))
 
@@ -144,3 +144,55 @@ gg_lorenz<-long_transform_tbl %>%
   ggplot(.,aes(p,lo,group=sample.ID))+geom_line(size=0.1)+
   geom_abline(slope = 1,intercept = 0, color="red")
 ggsave("./img/TSS_lorenz.png",gg_lorenz)  
+
+tmp_peak<-"chr10:100174900..100174956,-"
+
+gg_lorenz<-long_transform_tbl %>% 
+  dplyr::rename(peak.ID=`00Annotation`) %>% 
+  group_by(peak.ID==tmp_peak) %>% 
+  filter(n()>300) %>% 
+  mutate(p=percent_rank(value)) %>% 
+  arrange(p) %>% 
+  mutate(lo=cumsum(value)) %>% 
+  mutate(lo=lo/sum(value)) %>% 
+  ggplot(.,aes(p,lo,group=peak.ID))+geom_line(size=0.1,alpha=0.1)+
+  geom_abline(slope = 1,intercept = 0, color="red")
+ggsave("./img/TSS_ubiquitous_lorenz.png",gg_lorenz)  
+## compute the gini coef
+
+peak_gini_tbl<-long_transform_tbl %>% 
+  dplyr::rename(peak.ID=`00Annotation`) %>% 
+  group_by(peak.ID) %>% 
+  mutate(rank=min_rank(value)) %>% 
+  summarise(gini=1 - (2/(n()-1))*(n()-(sum(rank*value))/(sum(value))),n=n(),mad=mad(value),med=median(value)) 
+
+peak_gini_tbl %>% 
+  filter(is.na(gini)) %>% arrange(desc(n))
+
+peak_gini_tbl %>% 
+  ggplot(.,aes(gini))+geom_density()
+
+peak_gini_tbl %>% 
+  ggplot(.,aes(mad/med,gini))+geom_point(alpha=0.01)
+
+tmp_peak<-"chr1:100110807..100110818,+"
+long_transform_tbl %>% 
+  dplyr::rename(peak.ID=`00Annotation`) %>% 
+  filter(peak.ID == tmp_peak) %>% 
+  ggplot(.,aes(value))+geom_histogram()
+
+
+sample_gini_tbl<-long_transform_tbl %>% 
+  dplyr::rename(peak.ID=`00Annotation`) %>% 
+  group_by(sample.ID) %>% 
+  mutate(rank=min_rank(value)) %>% 
+  summarise(gini=1 - (2/(n()-1))*(n()-(sum(rank*value))/(sum(value))),n=n(),mad=mad(value),med=median(value)) 
+
+sample_gini_tbl %>% 
+  filter(is.na(gini)) %>% arrange(desc(n))
+
+sample_gini_tbl %>% 
+  ggplot(.,aes(gini))+geom_density()
+
+sample_gini_tbl %>% 
+  ggplot(.,aes(mad/med,gini))+geom_point()
