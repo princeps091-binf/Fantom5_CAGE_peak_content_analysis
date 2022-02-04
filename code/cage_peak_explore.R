@@ -63,6 +63,10 @@ base::load('./data/long_form_cage_tbl.Rda')
 long_transform_tbl<-long_transform_tbl %>% 
   left_join(.,sample_cl_tbl)
 
+sample_ID_tbl<-long_transform_tbl %>% distinct(sample.ID)
+save(sample_ID_tbl,file = './data/sample_cell_line_ID_tbl.Rda')
+
+
 long_transform_tbl %>% 
   dplyr::rename(peak.ID=`00Annotation`) %>% 
   filter(!(is.na(cl))) %>% 
