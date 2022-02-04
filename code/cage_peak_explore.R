@@ -131,27 +131,16 @@ peak_summary_tbl %>%
   geom_point(aes(med,rank),color="red",size=0.1)+
 scale_x_log10()
 
-edge_tbl<-long_transform_tbl %>% 
-  dplyr::rename(peak.ID=`00Annotation`) %>% 
+#------------------------------
+## Lorenz curve
+tmp_sample<-"CNhs12331"
+gg_lorenz<-long_transform_tbl %>% 
   group_by(sample.ID) %>% 
-  mutate(weight=1/dense_rank(desc(value))) %>% 
-  dplyr::select(peak.ID,sample.ID,weight)
-ego_tbl<-edge_tbl %>% ungroup() %>% 
-  distinct(peak.ID) %>% mutate(ego.idx=1:n())
-alter_tbl<-edge_tbl %>% ungroup %>% 
-  distinct(sample.ID) %>% mutate(alter.idx=1:n())
-edge_tbl<-edge_tbl %>% ungroup %>% 
-  left_join(.,ego_tbl) %>% 
-  left_join(.,alter_tbl)
-
-FANTOM_mat<-Matrix::sparseMatrix(i=edge_tbl$ego.idx,j=edge_tbl$alter.idx,x=log10(edge_tbl$weight))
-png("./img/FANTOM_sparsity.png")
-image(as.matrix(FANTOM_mat))
-dev.off()
-
-o <- c(
-
-    seriate(dist(FANTOM_mat, "minkowski", p = 1), method = "TSP"),
-
-    seriate(dist(Matrix::t(FANTOM_mat), "minkowski", p = 1), method = "TSP")
-)
+  filter(n()>5) %>% 
+  mutate(p=percent_rank(value)) %>% 
+  arrange(p) %>% 
+  mutate(lo=cumsum(value)) %>% 
+  mutate(lo=lo/sum(value)) %>% 
+  ggplot(.,aes(p,lo,group=sample.ID))+geom_line(size=0.1)+
+  geom_abline(slope = 1,intercept = 0, color="red")
+ggsave("./img/TSS_lorenz.png",gg_lorenz)  
