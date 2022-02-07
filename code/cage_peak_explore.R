@@ -72,6 +72,10 @@ long_transform_tbl %>%
   filter(!(is.na(cl))) %>% 
   ggplot(.,aes(value,color=as.factor(cl)))+geom_density()+scale_x_log10()
 
+long_transform_tbl %>% 
+  dplyr::rename(peak.ID=`00Annotation`) %>% 
+  ggplot(.,aes(value))+geom_density()+scale_x_log10()
+
 
 long_transform_tbl %>% 
   dplyr::rename(peak.ID=`00Annotation`) %>% 
@@ -115,21 +119,30 @@ peak_summary_tbl<-long_transform_tbl %>%
   group_by(peak.ID) %>% 
   summarise(n=n(),mad=mad(value),med=median(value),q25=quantile(value,0.25),q75=quantile(value,0.75))
 
-peak_summary_tbl %>% ggplot(.,aes(med,mad/med,color=n))+geom_point()+scale_x_log10()
-
-peak_summary_tbl %>% mutate(nc=ifelse(n>300,"ubiquitous",ifelse(n<10,"specialised","else"))) %>% 
-  ggplot(.,aes(med,mad/med,color=n))+geom_point(alpha=0.1)+scale_x_log10()+facet_grid(nc~.)
-
-peak_summary_tbl %>% 
-  ggplot(.,aes(n))+geom_density()
-
 peak_summary_tbl %>% 
   arrange(desc(med)) %>% 
   mutate(rank=dense_rank(med)) %>% 
   ggplot(.,aes(x=q25,xend=q75,y=rank,yend=rank))+
   geom_segment(size=0.05)+
-  geom_point(aes(med,rank),color="red",size=0.1)+
-scale_x_log10()
+  geom_point(aes(med,rank),color="red",size=0.05)+
+  scale_x_log10()
+ggsave("~/Documents/multires_bhicect/weeklies/weekly50/img/TSS_peak_IQR_segment.png")
+
+peak_summary_tbl %>% 
+  ggplot(.,aes(n))+geom_histogram()
+ggsave("~/Documents/multires_bhicect/weeklies/weekly50/img/TSS_peak_nsample_hist.png")
+
+peak_summary_tbl %>% 
+  ggplot(.,aes(mad/med))+geom_histogram()
+ggsave("~/Documents/multires_bhicect/weeklies/weekly50/img/TSS_peak_npcv_hist.png")
+
+peak_summary_tbl %>% ggplot(.,aes(med,mad/med,color=n))+geom_point()+scale_x_log10()
+ggsave("~/Documents/multires_bhicect/weeklies/weekly50/img/TSS_mad_vs_nsample_scatter.png")
+
+peak_summary_tbl %>% mutate(nc=ifelse(n>300,"ubiquitous",ifelse(n<50,"specialised","intermediate"))) %>% 
+  mutate(nc=fct_relevel(nc,c("specialised","intermediate","ubiquitous"))) %>% 
+  ggplot(.,aes(med,mad/med,color=n))+geom_point(alpha=0.1)+scale_x_log10()+facet_grid(nc~.)
+ggsave("~/Documents/multires_bhicect/weeklies/weekly50/img/TSS_mad_vs_nsample_ncated_scatter.png")
 
 #------------------------------
 ## Lorenz curve
@@ -173,7 +186,35 @@ peak_gini_tbl %>%
   ggplot(.,aes(gini))+geom_density()
 
 peak_gini_tbl %>% 
-  ggplot(.,aes(mad/med,gini))+geom_point(alpha=0.01)
+  ggplot(.,aes(n,gini))+geom_point(alpha=0.01)
+
+peak_gini_tbl %>% 
+  filter(n>2) %>% 
+  ggplot(.,aes(med,gini,col=n))+
+  scale_x_log10()+
+  geom_point(alpha=0.05)
+
+peak_gini_tbl %>% 
+  filter(n>2) %>% 
+  ggplot(.,aes(mad/med,gini))+geom_point(alpha=0.05)
+
+peak_gini_tbl%>% 
+  filter(n>2) %>% 
+  mutate(nc=ifelse(n>300,"ubiquitous",ifelse(n<50,"specialised","intermediate"))) %>% 
+  mutate(nc=fct_relevel(nc,c("specialised","intermediate","ubiquitous"))) %>% 
+  ggplot(.,aes(med,gini,col=n))+
+  scale_x_log10()+
+  geom_point(alpha=0.05)+
+  facet_grid(nc~.)
+
+
+peak_gini_tbl%>% 
+  filter(n>2) %>% 
+  mutate(nc=ifelse(n>300,"ubiquitous",ifelse(n<50,"specialised","intermediate"))) %>% 
+  mutate(nc=fct_relevel(nc,c("specialised","intermediate","ubiquitous"))) %>% 
+  ggplot(.,aes(mad/med,gini,col=n))+
+  geom_point(alpha=0.05)+
+  facet_grid(nc~.)
 
 tmp_peak<-"chr1:100110807..100110818,+"
 long_transform_tbl %>% 
@@ -195,4 +236,4 @@ sample_gini_tbl %>%
   ggplot(.,aes(gini))+geom_density()
 
 sample_gini_tbl %>% 
-  ggplot(.,aes(mad/med,gini))+geom_point()
+  ggplot(.,aes(n,gini))+geom_point()
