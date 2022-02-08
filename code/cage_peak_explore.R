@@ -144,6 +144,25 @@ peak_summary_tbl %>% mutate(nc=ifelse(n>300,"ubiquitous",ifelse(n<50,"specialise
   ggplot(.,aes(med,mad/med,color=n))+geom_point(alpha=0.1)+scale_x_log10()+facet_grid(nc~.)
 ggsave("~/Documents/multires_bhicect/weeklies/weekly50/img/TSS_mad_vs_nsample_ncated_scatter.png")
 
+#----------------------------------------------------------------------
+#Add the corresponding GRange list-column
+
+library(GenomicRanges)
+
+cage_tbl_coord_build_fn<-function(cage_tbl,ID_col){
+  
+  cage_coord<-cage_tbl %>% dplyr::select(ID_col) %>% unlist
+  cage_start_end<-unlist(lapply(strsplit(unlist(lapply(strsplit(cage_coord,split = ':'),'[',2)),split=','),'[',1))
+  cage_start<-as.numeric(unlist(lapply(strsplit(cage_start_end,split = '\\..'),'[',1)))
+  cage_end<-as.numeric(unlist(lapply(strsplit(cage_start_end,split = '\\..'),'[',2)))
+  cage_chr<-unlist(lapply(strsplit(cage_coord,split = ':'),'[',1))
+  return(cage_tbl%>%mutate(chr=cage_chr,start=cage_start,end=cage_end))
+  
+}
+
+peak_summary_tbl<-peak_summary_tbl %>% cage_tbl_coord_build_fn(.,"peak.ID") 
+save(peak_summary_tbl,file="./data/CAGE_tss_cell_line_summary_tbl.Rda")
+
 #------------------------------
 ## Lorenz curve
 tmp_sample<-"CNhs12331"
