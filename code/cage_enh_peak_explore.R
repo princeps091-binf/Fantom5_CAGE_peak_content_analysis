@@ -32,6 +32,9 @@ ggsave("~/Documents/multires_bhicect/weeklies/weekly50/img/ENH_peak_IQR_segment.
 enh_peak_summary_tbl %>% ggplot(.,aes(n))+geom_histogram()
 ggsave("~/Documents/multires_bhicect/weeklies/weekly50/img/ENH_peak_nsample_hist.png")
 
+enh_peak_summary_tbl %>% ggplot(.,aes(mad/med))+geom_histogram()
+ggsave("~/Documents/multires_bhicect/weeklies/weekly50/img/ENH_npcv_hist.png")
+
 enh_peak_summary_tbl %>% ggplot(.,aes(med,mad/med,color=n))+geom_point()+scale_x_log10()
 ggsave("~/Documents/multires_bhicect/weeklies/weekly50/img/ENH_mad_vs_nsample_scatter.png")
 
