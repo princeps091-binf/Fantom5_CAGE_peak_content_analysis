@@ -4,20 +4,33 @@ library(igraph)
 library(seriation)
 library(viridisLite)
 
-cage_tbl<-vroom("~/Documents/multires_bhicect/data/epi_data/hg19.cage_peak_phase1and2combined_tpm_ann.osc.txt",comment = '#',col_select = contains(c("Annotation","cell%20line")))
+cage_tbl<-vroom("~/Documents/multires_bhicect/data/epi_data/hg19.cage_peak_phase1and2combined_tpm_ann.osc.txt",comment = '#')
+
+grep("%2c%[0-9]+hr[0-9]+min%2c%|[0-9]+hr|%20day[0-9]+|%20fraction%2|treated%20|%20.+differentiation%20|%20response%20to|%20after%20",colnames(cage_tbl),value=T,invert = T)
+
+grep("%2c%[0-9]+hr[0-9]+min%2c%",colnames(cage_tbl),value=T)
+grep("[0-9]+hr|[0-9]+min",colnames(cage_tbl),value=T)
+grep("day[0-9]+",colnames(cage_tbl),value=T)
+grep("cytoplasmic%20fraction",colnames(cage_tbl),value=T)
+grep("%20response%20to",colnames(cage_tbl),value=T)
+sample_set<-grep("[0-9]+hr|[0-9]+min|day[0-9]+|cytoplasmic%20fraction|%20response%20to|after|infection|treated|derived",colnames(cage_tbl),value=T,invert=T)
+sample_col_set<-grep("[0-9]",sample_set,value=T)
+save(sample_col_set,file="./data/FANTOM_TSS_col_select.Rda")
+cage_tbl<-vroom("~/Documents/multires_bhicect/data/epi_data/hg19.cage_peak_phase1and2combined_tpm_ann.osc.txt",comment = '#',col_select = contains(sample_col_set))
+
 cell_line<-colnames(cage_tbl)
 sample_id<-unlist(lapply(strsplit(cell_line,split='\\.'),'[',3))
 colnames(cage_tbl)<-c("peak.ID",sample_id[-1])
 cage_tbl<-cage_tbl[-c(1,2),]
 #Produce correlation matrix across cell-lines
 cell_cor_mat<-cor(cage_tbl[,-1],method = "spearman")
-save(cell_cor_mat,file = './data/CAGE_cormat.Rda')
+save(cell_cor_mat,file = './data/CAGE_big_set_cormat.Rda')
 
 base::load('./data/CAGE_cormat.Rda')
 d<-as.dist(1-cell_cor_mat)
 o<-seriate(d,method="HC")
 image(cell_cor_mat[get_order(o),get_order(o)],col=viridis(100))
-
+hist(as.numeric(cell_cor_mat))
 cell_cor_mat[cell_cor_mat<median(as.numeric(cell_cor_mat))]<-0
 
 g_cell<-graph_from_adjacency_matrix(cell_cor_mat,weighted = T,diag = F,mode = "undirected")
@@ -36,7 +49,7 @@ comm_edge_tbl<-do.call(bind_rows,lapply(sample_comm,function(i){
 }))
 tmp_mat<-matrix(0,nrow = nrow(cell_cor_mat),ncol=ncol(cell_cor_mat),dimnames = dimnames(cell_cor_mat))
 tmp_mat[as.matrix(comm_edge_tbl[,1:2])]<-comm_edge_tbl$x
-image(tmp_mat[get_order(o),get_order(o)],col=plasma(4))
+image(tmp_mat[get_order(o),get_order(o)],col=plasma(6))
 
 sample_cl_tbl<-do.call(bind_rows,lapply(sample_comm,function(i){
   tmp_v<-V(main_sub_g)$name[which(cluster_louvain(main_sub_g)$membership==i)]
