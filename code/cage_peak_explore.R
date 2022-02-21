@@ -1,8 +1,8 @@
-library(tidyverse)
-library(vroom)
 library(igraph)
 library(seriation)
 library(viridisLite)
+library(tidyverse)
+library(vroom)
 
 cage_tbl<-vroom("~/Documents/multires_bhicect/data/epi_data/hg19.cage_peak_phase1and2combined_tpm_ann.osc.txt",comment = '#')
 
@@ -16,6 +16,8 @@ grep("%20response%20to",colnames(cage_tbl),value=T)
 sample_set<-grep("[0-9]+hr|[0-9]+min|day[0-9]+|cytoplasmic%20fraction|%20response%20to|after|infection|treated|derived",colnames(cage_tbl),value=T,invert=T)
 sample_col_set<-grep("[0-9]",sample_set,value=T)
 save(sample_col_set,file="./data/FANTOM_TSS_col_select.Rda")
+#-----------------------------------------------------------------
+base::load("./data/FANTOM_TSS_col_select.Rda")
 cage_tbl<-vroom("~/Documents/multires_bhicect/data/epi_data/hg19.cage_peak_phase1and2combined_tpm_ann.osc.txt",comment = '#',col_select = contains(sample_col_set))
 
 cell_line<-colnames(cage_tbl)
@@ -59,25 +61,26 @@ sample_cl_tbl<-do.call(bind_rows,lapply(sample_comm,function(i){
 sample_cl_tbl<-tibble(sample.ID=V(g_cell)$name) %>% 
   left_join(.,sample_cl_tbl)
 #Pivot to more efficient long-format
+
 long_transform_tbl<-do.call(bind_rows,lapply(2:ncol(cage_tbl),function(i){
   
   cage_tbl %>% dplyr::select(1,i) %>%
-    slice(-c(1,2)) %>% 
-    mutate(value=.data[[cell_line[i]]]) %>%
+#    slice(-c(1,2)) %>% 
+    mutate(value=.data[[sample_id[i]]]) %>%
     dplyr::select(-2) %>% 
     filter(value > 0) %>% 
     mutate(sample.ID=sample_id[i])
   
 }))
 
-save(long_transform_tbl,file = './data/long_form_cage_tbl.Rda')
+save(long_transform_tbl,file = './data/long_form_big_set_cage_tbl.Rda')
 base::load('./data/long_form_cage_tbl.Rda')
 
 long_transform_tbl<-long_transform_tbl %>% 
   left_join(.,sample_cl_tbl)
 
 sample_ID_tbl<-long_transform_tbl %>% distinct(sample.ID)
-save(sample_ID_tbl,file = './data/sample_cell_line_ID_tbl.Rda')
+save(sample_ID_tbl,file = './data/sample_big_set_cell_line_ID_tbl.Rda')
 
 
 long_transform_tbl %>% 
@@ -127,7 +130,7 @@ sample_summary_tbl<-long_transform_tbl %>%
 
 
 peak_summary_tbl<-long_transform_tbl %>% 
-  dplyr::rename(peak.ID=`00Annotation`) %>%
+#  dplyr::rename(peak.ID=`00Annotation`) %>%
 #  filter(!(is.na(cl))) %>% 
   group_by(peak.ID) %>% 
   summarise(n=n(),mad=mad(value),med=median(value),q25=quantile(value,0.25),q75=quantile(value,0.75))
@@ -152,15 +155,14 @@ ggsave("~/Documents/multires_bhicect/weeklies/weekly50/img/TSS_peak_npcv_hist.pn
 peak_summary_tbl %>% ggplot(.,aes(med,mad/med,color=n))+geom_point()+scale_x_log10()
 ggsave("~/Documents/multires_bhicect/weeklies/weekly50/img/TSS_mad_vs_nsample_scatter.png")
 
-peak_summary_tbl %>% mutate(nc=ifelse(n>300,"ubiquitous",ifelse(n<50,"specialised","intermediate"))) %>% 
+peak_summary_tbl %>% mutate(nc=ifelse(n>900,"ubiquitous",ifelse(n<250,"specialised","intermediate"))) %>% 
+  filter(n>2) %>% 
   mutate(nc=fct_relevel(nc,c("specialised","intermediate","ubiquitous"))) %>% 
   ggplot(.,aes(med,mad/med,color=n))+geom_point(alpha=0.1)+scale_x_log10()+facet_grid(nc~.)
 ggsave("~/Documents/multires_bhicect/weeklies/weekly50/img/TSS_mad_vs_nsample_ncated_scatter.png")
 
 #----------------------------------------------------------------------
 #Add the corresponding GRange list-column
-
-library(GenomicRanges)
 
 cage_tbl_coord_build_fn<-function(cage_tbl,ID_col){
   
@@ -174,7 +176,7 @@ cage_tbl_coord_build_fn<-function(cage_tbl,ID_col){
 }
 
 peak_summary_tbl<-peak_summary_tbl %>% cage_tbl_coord_build_fn(.,"peak.ID") 
-save(peak_summary_tbl,file="./data/CAGE_tss_cell_line_summary_tbl.Rda")
+save(peak_summary_tbl,file="./data/CAGE_tss_cell_line_summary_big_set_tbl.Rda")
 
 #------------------------------
 ## Lorenz curve
