@@ -74,7 +74,7 @@ long_transform_tbl<-do.call(bind_rows,lapply(2:ncol(cage_tbl),function(i){
 }))
 
 save(long_transform_tbl,file = './data/long_form_big_set_cage_tbl.Rda')
-base::load('./data/long_form_cage_tbl.Rda')
+base::load('./data/long_form_big_set_cage_tbl.Rda')
 
 long_transform_tbl<-long_transform_tbl %>% 
   left_join(.,sample_cl_tbl)
@@ -94,10 +94,11 @@ long_transform_tbl %>%
 
 
 long_transform_tbl %>% 
-  dplyr::rename(peak.ID=`00Annotation`) %>% 
-  filter(!(is.na(cl))) %>% 
+#  dplyr::rename(peak.ID=`00Annotation`) %>% 
+#  filter(!(is.na(cl))) %>% 
   filter(peak.ID=="chr1:10003486..10003551,+") %>% 
-  ggplot(.,aes(value,color=as.factor(cl)))+geom_density()
+#  ggplot(.,aes(value,color=as.factor(cl)))+geom_density()
+  ggplot(.,aes(value))+geom_density()
 
 
 gg_peak_cl_med<-long_transform_tbl %>% 
@@ -158,7 +159,7 @@ ggsave("~/Documents/multires_bhicect/weeklies/weekly50/img/TSS_mad_vs_nsample_sc
 peak_summary_tbl %>% mutate(nc=ifelse(n>900,"ubiquitous",ifelse(n<250,"specialised","intermediate"))) %>% 
   filter(n>2) %>% 
   mutate(nc=fct_relevel(nc,c("specialised","intermediate","ubiquitous"))) %>% 
-  ggplot(.,aes(med,mad/med,color=n))+geom_point(alpha=0.1)+scale_x_log10()+facet_grid(nc~.)
+  ggplot(.,aes(med,mad/med,color=n))+geom_point(alpha=0.1)+scale_x_log10()+facet_grid(nc~.)+geom_smooth()
 ggsave("~/Documents/multires_bhicect/weeklies/weekly50/img/TSS_mad_vs_nsample_ncated_scatter.png")
 
 #----------------------------------------------------------------------
@@ -208,7 +209,7 @@ ggsave("./img/TSS_ubiquitous_lorenz.png",gg_lorenz)
 ## compute the gini coef
 
 peak_gini_tbl<-long_transform_tbl %>% 
-  dplyr::rename(peak.ID=`00Annotation`) %>% 
+#  dplyr::rename(peak.ID=`00Annotation`) %>% 
   group_by(peak.ID) %>% 
   mutate(rank=min_rank(value)) %>% 
   summarise(gini=1 - (2/(n()-1))*(n()-(sum(rank*value))/(sum(value))),n=n(),mad=mad(value),med=median(value)) 
@@ -246,7 +247,7 @@ peak_gini_tbl%>%
   filter(n>2) %>% 
   mutate(nc=ifelse(n>300,"ubiquitous",ifelse(n<50,"specialised","intermediate"))) %>% 
   mutate(nc=fct_relevel(nc,c("specialised","intermediate","ubiquitous"))) %>% 
-  ggplot(.,aes(mad/med,gini,col=n))+
+  ggplot(.,aes(log10(mad),gini,col=n))+
   geom_point(alpha=0.05)+
   facet_grid(nc~.)
 
