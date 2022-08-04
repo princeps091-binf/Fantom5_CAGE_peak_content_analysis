@@ -19,8 +19,8 @@ input_tbl_fn<-function(file){
 #------------------------------------------
 fantom5_supp<-'~/Documents/multires_bhicect/data/epi_data/CAGE/41586_2014_BFnature13182_MOESM86_ESM.xlsx'
 fantom5_tss_tbl<-"~/Documents/multires_bhicect/data/epi_data/hg19.cage_peak_phase1and2combined_tpm_long.Rda"
-hub_file<-"~/Documents/multires_bhicect/Bootstrapp_fn/data/DAGGER_tbl/trans_res/GM12878_union_top_trans_res_dagger_tbl.Rda"
-spec_res_folder<-"~/Documents/multires_bhicect/data/GM12878/spec_res/"
+hub_file<-"~/Documents/multires_bhicect/Bootstrapp_fn/data/DAGGER_tbl/trans_res/H1_union_top_trans_res_dagger_tbl.Rda"
+spec_res_folder<-"~/Documents/multires_bhicect/data/H1/Dekker/spec_res/"
 #------------------------------------------
 H1<-c("CNhs14067","CNhs14068","CNhs13964")
 GM12878<-c('CNhs12331','CNhs12332','CNhs12333')
@@ -35,7 +35,7 @@ peak_sample_count<-cage_tbl %>%
   summarise(n=n())
 
 cell_cage_tbl<-cage_tbl %>% 
-  filter(sample.ID %in% GM12878) %>% 
+  filter(sample.ID %in% H1) %>% 
   group_by(`00Annotation`) %>% 
   summarise(m=mean(tpm)) %>% 
   filter(!(grepl("STAT:",`00Annotation`))) %>% 
@@ -96,7 +96,8 @@ cell_cage_tbl %>%
   mutate(hub.io=ifelse(`00Annotation` %in% hub_res_peak_tbl$`00Annotation`,"in","out")) %>% 
   ggplot(.,aes(n,color=hub.io))+
   geom_density()+
-  scale_color_brewer(palette = "Set1")
+  scale_color_brewer(palette = "Set1")+
+  theme_classic()
 
 hub_res_peak_tbl %>% 
   mutate(hub.res=fct_relevel(hub.res,names(res_num))) %>% 
@@ -104,3 +105,14 @@ hub_res_peak_tbl %>%
   geom_density(alpha=0.8)+
   scale_fill_viridis_d()+
   facet_wrap(hub.res~.,scales="free")
+
+in_hub_vec<-cell_cage_tbl %>% 
+  mutate(hub.io=ifelse(`00Annotation` %in% hub_res_peak_tbl$`00Annotation`,"in","out")) %>% 
+  filter(hub.io=="in") %>% 
+  dplyr::select(n) %>% unlist
+
+out_hub_vec<-cell_cage_tbl %>% 
+  mutate(hub.io=ifelse(`00Annotation` %in% hub_res_peak_tbl$`00Annotation`,"in","out")) %>% 
+  filter(hub.io=="out") %>% 
+  dplyr::select(n) %>% unlist
+wilcox.test(in_hub_vec,out_hub_vec,alternative = "greater")
